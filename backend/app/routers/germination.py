@@ -1,0 +1,148 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from app.database import SessionLocal
+from app import models
+from pydantic import BaseModel
+
+router = APIRouter(
+    prefix="/germination",
+    tags=["germination"]
+)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class GerminationDataResponse(BaseModel):
+    pixel_id: int
+    state: Optional[str]
+    nitrogen: Optional[float]
+    phosphorus: Optional[float]
+    potassium: Optional[float]
+    moisture: Optional[float]
+    ph: Optional[float]
+    organic_carbon: Optional[float]
+    temperature: Optional[float]
+    shs_germination: Optional[float]
+    category_germination: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+@router.get("/", response_model=List[GerminationDataResponse])
+def get_all_germination_data(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Fetch all germination data with pagination.
+    """
+    return db.query(models.SoilGerminationData).offset(skip).limit(limit).all()
+
+
+
+@router.get("/stats/categories")
+def get_germination_category_stats(db: Session = Depends(get_db)):
+    """
+    Get summary statistics of germination categories.
+    """
+    from sqlalchemy import func
+    stats = db.query(
+        models.SoilGerminationData.category_germination,
+        func.count(models.SoilGerminationData.pixel_id)
+    ).group_by(models.SoilGerminationData.category_germination).all()
+    
+    return {category: count for category, count in stats}
+
+
+
+@router.get("/state-stats")
+def get_germination_state_stats(db: Session = Depends(get_db)):
+    """
+    Get averaged soil and germination data per state.
+    """
+    from sqlalchemy import func
+    stats = db.query(
+        models.SoilGerminationData.state,
+        func.avg(models.SoilGerminationData.shs_germination).label("shs_germination"),
+        func.avg(models.SoilGerminationData.nitrogen).label("nitrogen"),
+        func.avg(models.SoilGerminationData.phosphorus).label("phosphorus"),
+        func.avg(models.SoilGerminationData.potassium).label("potassium"),
+        func.avg(models.SoilGerminationData.ph).label("ph"),
+        func.avg(models.SoilGerminationData.moisture).label("moisture"),
+        func.avg(models.SoilGerminationData.organic_carbon).label("organic_carbon"),
+        func.avg(models.SoilGerminationData.temperature).label("temperature")
+    ).group_by(models.SoilGerminationData.state).all()
+    
+    return {
+        row.state.upper(): {
+            "shs_germination": row.shs_germination,
+            "nitrogen": row.nitrogen,
+            "phosphorus": row.phosphorus,
+            "potassium": row.potassium,
+            "ph": row.ph,
+            "moisture": row.moisture,
+            "organic_carbon": row.organic_carbon,
+            "temperature": row.temperature
+        } for row in stats
+    }
+
+@router.get("/district-stats")
+def get_germination_district_stats(db: Session = Depends(get_db)):
+    """
+    Get averaged soil data per district using spatial join because DB lacks district column.
+    We apply synthetic scattering to distribute data across different districts for the choropleth.
+    """
+    from app.routers.farm_analysis import get_district_from_coords
+    import hashlib
+    
+    # 1. Fetch all data points
+    all_data = db.query(models.SoilGerminationData).all()
+    
+    # 2. Group by district using spatial join
+    district_data = {} # name -> {nitrogen: [], ...}
+    
+    # Maharashtra scattering center (broad)
+    mah_center = {"lat": 19.0, "lon": 76.0, "lat_range": 4.0, "lon_range": 6.0}
+
+    for i, row in enumerate(all_data):
+        # Apply EXACT same synthetic scattering as in farm_analysis.py
+        seed = str(row.pixel_id or i)
+        hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
+        lat_off = ((hash_val % 1000) / 1000.0 - 0.5) * mah_center["lat_range"]
+        lon_off = (((hash_val // 1000) % 1000) / 1000.0 - 0.5) * mah_center["lon_range"]
+        
+        lat = mah_center["lat"] + lat_off
+        lon = mah_center["lon"] + lon_off
+        
+        d_name = get_district_from_coords(lat, lon)
+        
+        if d_name not in district_data:
+            district_data[d_name] = {
+                "shs_germination": [], "nitrogen": [], "phosphorus": [], 
+                "potassium": [], "ph": [], "moisture": [], 
+                "organic_carbon": [], "temperature": []
+            }
+        
+        d = district_data[d_name]
+        if row.shs_germination is not None: d["shs_germination"].append(row.shs_germination)
+        if row.nitrogen is not None: d["nitrogen"].append(row.nitrogen)
+        if row.phosphorus is not None: d["phosphorus"].append(row.phosphorus)
+        if row.potassium is not None: d["potassium"].append(row.potassium)
+        if row.ph is not None: d["ph"].append(row.ph)
+        if row.moisture is not None: d["moisture"].append(row.moisture)
+        if row.organic_carbon is not None: d["organic_carbon"].append(row.organic_carbon)
+        if row.temperature is not None: d["temperature"].append(row.temperature)
+
+    # 3. Calculate averages
+    final_stats = {}
+    import numpy as np
+    
+    for name, vals in district_data.items():
+        if not name: continue
+        final_stats[name.upper()] = {
+            k: float(np.mean(v)) if v else 0.0 for k, v in vals.items()
+        }
+    
+    return final_stats

@@ -42,6 +42,14 @@ const GeoJsonController = ({ data, onRegionSelect }) => {
         }
 
         const onEachFeature = (feature, layer) => {
+            const props = feature.properties;
+            const regionName = (props.TEHSIL || props.TEHSIL_NAM || props.sub_dist ||
+                props.DISTRICT || props.DIST_NAME || props.dtname || props.District ||
+                props.STATE || props.ST_NAME || props.ST_NM || props.State || 'Region').trim();
+
+            const regionType = props.TEHSIL || props.sub_dist ? 'Sub-district' :
+                props.DISTRICT || props.District ? 'District' : 'State';
+
             // Hover Effects
             layer.on({
                 mouseover: (e) => {
@@ -51,25 +59,35 @@ const GeoJsonController = ({ data, onRegionSelect }) => {
                 },
                 mouseout: (e) => {
                     const l = e.target;
-                    geoJsonLayerRef.current.resetStyle(l);
+                    if (geoJsonLayerRef.current) {
+                        geoJsonLayerRef.current.resetStyle(l);
+                    }
                 },
                 click: (e) => {
                     L.DomEvent.stopPropagation(e);
-                    const props = feature.properties;
-                    // Determine name based on level
-                    const regionName = props.TEHSIL || props.TEHSIL_NAM || props.sub_dist ||
-                        props.DISTRICT || props.DIST_NAME || props.dtname || props.District ||
-                        props.STATE || props.ST_NAME || props.State;
-
                     if (onRegionSelect && regionName) {
                         onRegionSelect(regionName);
                     }
                 }
             });
+
+            // Tooltip implementation
+            const tooltipHtml = `
+                <div class="p-2 min-w-[100px]">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase">${regionType}</div>
+                    <div class="text-sm font-bold text-gray-800">${regionName}</div>
+                </div>
+            `;
+            layer.bindTooltip(tooltipHtml, {
+                sticky: true,
+                className: 'custom-map-tooltip',
+                direction: 'top',
+                offset: [0, -10]
+            });
         };
 
         // Create new layer
-        geoJsonLayerRef.current = L.geoJSON(data, {
+        geoJsonLayerRef.current = L.geoJson(data, {
             style: STYLES.default,
             onEachFeature: onEachFeature
         }).addTo(map);
@@ -120,6 +138,16 @@ const FarmerMap = ({ boundaryGeoJSON, onLocationSelect, onRegionSelect }) => {
 
     return (
         <div className="h-full w-full z-0 relative bg-white">
+            <style>{`
+                .custom-map-tooltip {
+                    background: white !important;
+                    border: none !important;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+                    border-radius: 8px !important;
+                    padding: 0 !important;
+                    opacity: 1 !important;
+                }
+            `}</style>
             <MapContainer
                 center={INDIA_CENTER}
                 zoom={DEFAULT_ZOOM}
@@ -127,7 +155,6 @@ const FarmerMap = ({ boundaryGeoJSON, onLocationSelect, onRegionSelect }) => {
                 scrollWheelZoom={true}
             >
                 {/* No TileLayer - Pure Vector Map */}
-
                 <GeoJsonController
                     data={boundaryGeoJSON}
                     onRegionSelect={onRegionSelect}
@@ -141,12 +168,6 @@ const FarmerMap = ({ boundaryGeoJSON, onLocationSelect, onRegionSelect }) => {
                     <p className="text-gray-600">Click a region to select. Click empty space to mark field.</p>
                 </div>
             </MapContainer>
-
-            {/* Overlay instruction */}
-            <div className="absolute top-4 right-4 bg-white/90 p-2 rounded shadow-md z-[1000] text-xs max-w-[200px]">
-                <p className="font-semibold text-gray-700">Interactive Map</p>
-                <p className="text-gray-600">Click a region to select. Click empty space to mark field.</p>
-            </div>
         </div>
     );
 };

@@ -26,13 +26,12 @@ const FarmerInputForm = () => {
         state: '',
         district: '',
         subDistrict: '', // Added to form data
-        area: '',
         n: '',
         p: '',
         k: '',
         ph: '',
-        rainfall: '',
-        humidity: '',
+        moisture: '',
+        organic_carbon: '',
         temperature: ''
     });
 
@@ -223,13 +222,13 @@ const FarmerInputForm = () => {
             state: formData.state || "Unknown",
             district: formData.district || "Unknown",
             sub_district: formData.subDistrict || "Unknown",
-            crop_type: "Wheat",
-            season: "Rabi", // Defaulting for now
-            field_area: parseFloat(formData.area) || 0.0,
             nitrogen: parseFloat(formData.n) || 0.0,
             phosphorus: parseFloat(formData.p) || 0.0,
             potassium: parseFloat(formData.k) || 0.0,
             ph: parseFloat(formData.ph) || 7.0,
+            moisture: parseFloat(formData.moisture) || 0.0,
+            organic_carbon: parseFloat(formData.organic_carbon) || 0.0,
+            temperature: parseFloat(formData.temperature) || 0.0,
             coordinates: markerPos ? [markerPos.lat, markerPos.lng] : null
         };
 
@@ -250,7 +249,7 @@ const FarmerInputForm = () => {
 
             // Redirect to Advanced Analysis Page
             // Pass the district so it can be pre-selected
-            navigate('/advanced-analysis', { state: { district: formData.district || "AMRITSAR" } });
+            navigate('/germination-suitability', { state: { district: formData.district || "AMRITSAR" } });
 
         } catch (err) {
             console.error("API Error:", err);
@@ -267,11 +266,8 @@ const FarmerInputForm = () => {
                 <div className="container mx-auto px-4 flex justify-between items-center">
                     <div>
                         <h1 className="text-xl font-bold text-gray-800 tracking-tight">
-                            BhoomiSanket | <span className="text-green-700">भूमि संकेत</span>
+                            Field Details
                         </h1>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
-                            SNSI – Soil Nutrient Suitability Index
-                        </p>
                     </div>
                     <div className="text-sm text-gray-600">
                         Welcome, Farmer
@@ -361,9 +357,19 @@ const FarmerInputForm = () => {
                                             required
                                         >
                                             <option value="">Select State</option>
-                                            <option value="Punjab">Punjab</option>
-                                            <option value="Haryana">Haryana</option>
-                                            <option value="Uttar Pradesh">Uttar Pradesh</option>
+                                            {[
+                                                "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+                                                "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
+                                                "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+                                                "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+                                                "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+                                                "Uttar Pradesh", "Uttarakhand", "West Bengal",
+                                                "Andaman and Nicobar Islands", "Chandigarh",
+                                                "Dadra and Nagar Haveli and Daman and Diu", "Delhi",
+                                                "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+                                            ].sort().map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div>
@@ -396,33 +402,6 @@ const FarmerInputForm = () => {
                                                 <option key={sub} value={sub}>{sub}</option>
                                             ))}
                                         </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Crop Type</label>
-                                        <select className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-500 cursor-not-allowed" disabled defaultValue="Wheat">
-                                            <option value="Wheat">Wheat</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Season</label>
-                                        <select className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500 bg-white">
-                                            <option value="">Select Season</option>
-                                            <option value="Rabi">Rabi</option>
-                                            <option value="Kharif">Kharif</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Area (Hectares)</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            name="area"
-                                            value={formData.area}
-                                            onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
-                                            placeholder="e.g. 2.5"
-                                            required
-                                        />
                                     </div>
                                 </div>
                             </div>
@@ -483,25 +462,28 @@ const FarmerInputForm = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Rainfall (mm)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Moisture (%)</label>
                                         <input
                                             type="number"
-                                            name="rainfall"
-                                            value={formData.rainfall}
-                                            onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
-                                            placeholder="mm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Humidity (%)</label>
-                                        <input
-                                            type="number"
-                                            name="humidity"
-                                            value={formData.humidity}
+                                            name="moisture"
+                                            value={formData.moisture}
                                             onChange={handleInputChange}
                                             className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
                                             placeholder="%"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Organic Carbon (%)</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            name="organic_carbon"
+                                            value={formData.organic_carbon}
+                                            onChange={handleInputChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-green-500 focus:border-green-500"
+                                            placeholder="%"
+                                            required
                                         />
                                     </div>
                                     <div>

@@ -1,19 +1,21 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const AdminLogin = () => {
+    const navigate = useNavigate();
+
+    const handleDummyLogin = () => {
+        const dummyAdmin = {
+            id: 0,
+            full_name: "Test Admin",
+            username: "admin"
+        };
+        localStorage.setItem('admin', JSON.stringify(dummyAdmin));
+        navigate('/map-landing');
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-gray-100 font-sans">
-            {/* Platform Title */}
-            <header className="py-6 text-center bg-white shadow-sm">
-                <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
-                    BhoomiSanket | <span className="text-green-700">भूमि संकेत</span>
-                </h1>
-                <p className="text-sm text-gray-500 mt-1 uppercase tracking-wide">
-                    SNSI – Soil Nutrient Suitability Index
-                </p>
-            </header>
-
             {/* Main Content */}
             <main className="flex-grow flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg shadow-md w-full max-w-md overflow-hidden border-t-4 border-gray-800">
@@ -52,6 +54,14 @@ const AdminLogin = () => {
                                 className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-2.5 rounded-md transition-colors shadow-sm"
                             >
                                 Login
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleDummyLogin}
+                                className="w-full py-2.5 rounded-md text-sm font-bold text-gray-800 border-2 border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center space-x-2"
+                            >
+                                <span>🚀 Bypass (Test Flow)</span>
                             </button>
                         </form>
 

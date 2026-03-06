@@ -8,11 +8,14 @@ import json
 # Load environment variables
 load_dotenv()
 
-# Check for existing router or keep if needed, but primarily focusing on the requested deliverables
 try:
     from app.routers import soil
 except ImportError:
     soil = None
+
+from app.database import engine, Base
+from app import models
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="BhoomiSanket API", version="0.1.0")
 
@@ -47,6 +50,15 @@ app.include_router(data_import.router)
 
 from app.routers import farm_analysis
 app.include_router(farm_analysis.router)
+
+from app.routers import query_builder
+app.include_router(query_builder.router)
+
+from app.routers import farmers
+app.include_router(farmers.router)
+
+from app.routers import germination
+app.include_router(germination.router)
 
 def get_db_connection():
     try:

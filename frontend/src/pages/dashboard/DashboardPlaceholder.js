@@ -25,7 +25,7 @@ const DashboardPlaceholder = () => {
             <header className="py-4 bg-white shadow-sm border-b border-gray-200">
                 <div className="container mx-auto px-4 max-w-5xl flex justify-between items-center">
                     <h1 className="text-2xl font-bold text-gray-800 tracking-tight">
-                        BhoomiSanket | <span className="text-green-700">भूमि संकेत</span>
+                        Analysis Dashboard
                     </h1>
                     <Link to="/farmer/form" className="text-sm text-green-700 font-medium hover:underline">
                         New Analysis
@@ -50,13 +50,13 @@ const DashboardPlaceholder = () => {
                         <h3 className="text-gray-500 font-medium uppercase tracking-wide text-sm mb-4">SNSI Score</h3>
                         <div className="relative inline-block">
                             <div className={`w-32 h-32 rounded-full flex items-center justify-center border-8 ${snsi_score >= 80 ? 'border-green-500 text-green-600' :
-                                    snsi_score >= 60 ? 'border-yellow-500 text-yellow-600' : 'border-red-500 text-red-600'
+                                snsi_score >= 60 ? 'border-yellow-500 text-yellow-600' : 'border-red-500 text-red-600'
                                 }`}>
                                 <span className="text-4xl font-bold">{snsi_score}</span>
                             </div>
                         </div>
                         <p className={`mt-4 text-lg font-bold ${snsi_score >= 80 ? 'text-green-600' :
-                                snsi_score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                            snsi_score >= 60 ? 'text-yellow-600' : 'text-red-600'
                             }`}>
                             {soil_status}
                         </p>

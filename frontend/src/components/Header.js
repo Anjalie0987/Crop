@@ -10,19 +10,24 @@ const Header = () => {
 
     const menuItems = [
         { name: 'Home', href: '/' },
-        { name: 'About SNSI', href: '#' },
-        { name: 'How It Works', href: '#' },
-        { name: 'Map View', href: '#' },
+        { name: 'About', href: '#' },
+        { name: 'Services', href: '#' },
+        { name: 'Dashboard', href: '/dashboard' },
+        { name: 'Contact', href: '#' },
     ];
 
     return (
-        <header className="bg-green-700 text-white shadow-md">
-            <div className="container mx-auto px-6 py-4">
-                <div className="flex items-center justify-between">
+        <header className="sticky top-0 z-50 bg-brand-dark text-white shadow-lg h-[70px] flex items-center font-sans">
+            <div className="container mx-auto px-6">
+                <div className="flex items-center justify-between h-full">
                     {/* Logo Section */}
                     <div className="flex items-center">
-                        <Link to="/" className="text-xl font-bold tracking-wide hover:text-green-100 transition-colors">
-                            SNSI – Soil Nutrient Suitability Index
+                        <Link to="/" className="flex items-center space-x-2">
+                            <div className="w-10 h-10 bg-brand-primary rounded-full flex items-center justify-center">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                            </div>
                         </Link>
                     </div>
 
@@ -32,18 +37,11 @@ const Header = () => {
                             <a
                                 key={item.name}
                                 href={item.href}
-                                className="text-sm font-medium hover:text-green-200 transition-colors duration-200"
+                                className="text-sm font-medium hover:text-brand-accent transition-colors duration-200"
                             >
                                 {item.name}
                             </a>
                         ))}
-                        {/* Login Button */}
-                        <Link
-                            to="/login"
-                            className="bg-white text-green-700 hover:bg-green-50 px-5 py-2 rounded-full text-sm font-bold shadow-sm transition-all duration-200 transform hover:scale-105"
-                        >
-                            Login
-                        </Link>
                     </nav>
 
                     {/* Mobile Hamburger Button */}
@@ -80,28 +78,19 @@ const Header = () => {
 
                 {/* Mobile Menu Dropdown */}
                 {isMenuOpen && (
-                    <nav className="md:hidden mt-4 pb-4">
-                        <ul className="flex flex-col space-y-3">
+                    <nav className="md:hidden absolute top-[70px] left-0 right-0 bg-brand-dark border-t border-white/10 pb-6 px-6 shadow-xl">
+                        <ul className="flex flex-col space-y-4 mt-4">
                             {menuItems.map((item) => (
                                 <li key={item.name}>
                                     <a
                                         href={item.href}
-                                        className="block text-sm font-medium hover:text-green-200 transition-colors"
+                                        className="block text-base font-medium hover:text-brand-accent transition-colors"
                                         onClick={() => setIsMenuOpen(false)}
                                     >
                                         {item.name}
                                     </a>
                                 </li>
                             ))}
-                            <li>
-                                <Link
-                                    to="/login"
-                                    className="block text-sm font-bold text-green-200 hover:text-white transition-colors"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    Login
-                                </Link>
-                            </li>
                         </ul>
                     </nav>
                 )}

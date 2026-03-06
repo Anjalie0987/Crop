@@ -69,3 +69,33 @@ class SoilCropData(Base):
     humidity = Column(Float)
     ph = Column(Float)
     rainfall = Column(Float)
+
+class Farmer(Base):
+    __tablename__ = "farmers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String, nullable=False)
+    mobile_number = Column(String, unique=True, index=True, nullable=False)
+    gender = Column(String)
+    dob = Column(String) # Storing as string for simplicity or DateTime
+    state = Column(String)
+    district = Column(String)
+    village = Column(String)
+    plot_number = Column(String)
+    password = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class SoilGerminationData(Base):
+    __tablename__ = "soil_germination_data"
+
+    pixel_id = Column(Integer, primary_key=True, index=True)
+    state = Column(String, index=True)
+    nitrogen = Column(Float)
+    phosphorus = Column(Float)
+    potassium = Column(Float)
+    moisture = Column(Float)
+    ph = Column(Float)
+    organic_carbon = Column(Float)
+    temperature = Column(Float)
+    shs_germination = Column(Float)
+    category_germination = Column(String)

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 
 const Home = () => {
@@ -8,12 +9,12 @@ const Home = () => {
             <Header />
 
             {/* Hero Section */}
-            <main className="relative flex-grow flex items-center justify-center px-6 py-24 min-h-[60vh]">
+            <main className="relative flex-grow min-h-screen flex items-center">
                 {/* Background Image */}
                 <div
                     className="absolute inset-0 z-0"
                     style={{
-                        backgroundImage: "url('/HERO_bg.jpg')",
+                        backgroundImage: "url('/Hero_bg.jpg')",
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                         backgroundRepeat: 'no-repeat'
@@ -24,22 +25,25 @@ const Home = () => {
                 <div className="absolute inset-0 bg-black/60 z-10" />
 
                 {/* Content */}
-                <div className="relative z-20 text-center max-w-5xl mx-auto">
-                    <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight drop-shadow-md">
-                        Soil Nutrient Suitability Index (SNSI) <br className="hidden md:block" /> for Wheat Cultivation
-                    </h2>
+                <div className="relative z-20 w-full px-6 md:px-[8%]">
+                    <div className="max-w-[600px] text-left">
+                        <h2 className="text-5xl md:text-6xl font-serif font-bold text-white mb-6 leading-tight">
+                            Analyze Your Soil & <br />
+                            Grow Smarter Crops
+                        </h2>
 
-                    <h3 className="text-xl md:text-2xl font-medium text-gray-200 mb-12 max-w-3xl mx-auto drop-shadow-sm">
-                        A data-driven platform to assess soil nutrient suitability and provide actionable insights for sustainable wheat production.
-                    </h3>
+                        <p className="text-lg md:text-xl text-white/80 mb-10 font-sans leading-relaxed">
+                            Upload your soil data and get AI-powered insights, nutrient recommendations, and crop suitability analysis for smarter farming decisions.
+                        </p>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                        <button className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 w-full sm:w-auto border border-transparent">
-                            Start Soil Analysis
-                        </button>
-                        <button className="px-8 py-4 bg-transparent border-2 border-white text-white hover:bg-white/10 text-lg font-semibold rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 w-full sm:w-auto">
-                            View Soil Health Map
-                        </button>
+                        <div className="flex">
+                            <Link
+                                to="/login-selection"
+                                className="px-10 py-4 bg-brand-primary hover:bg-brand-dark text-white text-lg font-bold rounded-[10px] shadow-xl transition-all duration-300 transform hover:scale-105"
+                            >
+                                Start Soil Analysis
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </main>

@@ -14,6 +14,7 @@ class FarmDataResponse(BaseModel):
     ph: Optional[float] = None
     organic_carbon: Optional[float] = None
     moisture: Optional[float] = None
+    shs_germination: Optional[float] = None
     soil_type: Optional[str] = None
     recommended_fertilizer: Optional[str] = None
 

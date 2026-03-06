@@ -6,12 +6,7 @@ const UserSignup = () => {
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             {/* Platform Title */}
             <header className="py-6 text-center bg-white shadow-sm">
-                <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
-                    BhoomiSanket | <span className="text-green-700">भूमि संकेत</span>
-                </h1>
-                <p className="text-sm text-gray-500 mt-1 uppercase tracking-wide">
-                    SNSI – Soil Nutrient Suitability Index
-                </p>
+                <h1 className="text-2xl font-bold text-gray-800">Registration</h1>
             </header>
 
             {/* Main Content */}

@@ -3,6 +3,7 @@ import { MapContainer, CircleMarker, Popup, useMap, GeoJSON } from 'react-leafle
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { INDIA_CENTER, DEFAULT_ZOOM } from '../../data/geoBounds';
+import QueryBuilder from '../../components/QueryBuilder';
 
 // === CONFIGURATION ===
 const API_BASE_URL = "http://localhost:8000/farm-analysis";
@@ -16,99 +17,93 @@ const ATTRIBUTES = [
     { key: "ph", label: "Soil pH", unit: "" },
     { key: "organic_carbon", label: "Organic Carbon", unit: "%" },
     { key: "moisture", label: "Soil Moisture", unit: "%" },
+    { key: "temperature", label: "Temperature", unit: "°C" },
+    { key: "shs_germination", label: "Germination Suitability", unit: "%" },
 ];
 
 // Color Scales Configuration
-const getColor = (attr, value) => {
-    if (value === null || value === undefined) return '#808080';
+const getColor = (attr, d) => {
+    if (d === null || d === undefined) return '#f3f4f6';
+    const attribute = attr === 'oc' ? 'organic_carbon' : attr;
 
-    switch (attr) {
+    // Standard ColorBrewer YlOrRd 8-step palette
+    const colors = {
+        8: '#800026', 7: '#BD0026', 6: '#E31A1C', 5: '#FC4E2A',
+        4: '#FD8D3C', 3: '#FEB24C', 2: '#FED976', 1: '#FFEDA0'
+    };
+
+    switch (attribute) {
         case 'nitrogen':
-            if (value < 75) return '#d73027'; // Very Low
-            if (value < 150) return '#fc8d59'; // Low
-            if (value < 225) return '#fee08b'; // Medium
-            return '#1a9850'; // High (225-300+)
-
+            return d > 350 ? colors[8] : d > 300 ? colors[7] : d > 250 ? colors[6] : d > 225 ? colors[5] :
+                d > 200 ? colors[4] : d > 150 ? colors[3] : d > 100 ? colors[2] : colors[1];
         case 'phosphorus':
-            if (value < 35) return '#d73027';
-            if (value < 75) return '#fc8d59';
-            if (value < 110) return '#fee08b';
-            return '#1a9850';
-
+            return d > 60 ? colors[8] : d > 50 ? colors[7] : d > 40 ? colors[6] : d > 30 ? colors[5] :
+                d > 22 ? colors[4] : d > 18 ? colors[3] : d > 14 ? colors[2] : colors[1];
         case 'potassium':
-            if (value < 100) return '#d73027';
-            if (value < 200) return '#fc8d59';
-            if (value < 300) return '#fee08b';
-            return '#1a9850';
-
+            return d > 450 ? colors[8] : d > 400 ? colors[7] : d > 350 ? colors[6] : d > 325 ? colors[5] :
+                d > 300 ? colors[4] : d > 250 ? colors[3] : d > 200 ? colors[2] : colors[1];
         case 'ph':
-            if (value < 5.5) return '#d73027'; // Strongly Acidic
-            if (value < 6.5) return '#fc8d59'; // Moderately Acidic
-            if (value <= 7.5) return '#1a9850'; // Neutral (Ideal)
-            return '#4575b4'; // Alkaline (> 7.5)
-
+            return d > 8.5 ? colors[8] : d > 8.0 ? colors[7] : d > 7.5 ? colors[6] : d > 7.0 ? colors[5] :
+                d > 6.5 ? colors[4] : d > 6.0 ? colors[3] : d > 5.5 ? colors[2] : colors[1];
         case 'organic_carbon':
-            if (value < 0.6) return '#d73027';
-            if (value < 1.0) return '#fc8d59';
-            if (value < 1.5) return '#fee08b';
-            return '#1a9850';
-
+            return d > 1.6 ? colors[8] : d > 1.4 ? colors[7] : d > 1.2 ? colors[6] : d > 1.0 ? colors[5] :
+                d > 0.8 ? colors[4] : d > 0.6 ? colors[3] : d > 0.4 ? colors[2] : colors[1];
         case 'moisture':
-            if (value < 13) return '#d73027';
-            if (value < 22) return '#fc8d59';
-            if (value < 31) return '#fee08b';
-            return '#1a9850';
-
+            return d > 35 ? colors[8] : d > 30 ? colors[7] : d > 25 ? colors[6] : d > 20 ? colors[5] :
+                d > 15 ? colors[4] : d > 10 ? colors[3] : d > 5 ? colors[2] : colors[1];
+        case 'temperature':
+            return d > 35 ? colors[8] : d > 32 ? colors[7] : d > 29 ? colors[6] : d > 26 ? colors[5] :
+                d > 23 ? colors[4] : d > 20 ? colors[3] : d > 17 ? colors[2] : colors[1];
+        case 'shs_germination':
+            return d >= 70 ? '#1a9850' : d >= 40 ? '#f4b400' : '#d73027';
         default:
-            return '#1a9850';
+            return d > 1000 ? colors[8] : d > 500 ? colors[7] : d > 200 ? colors[6] : d > 100 ? colors[5] :
+                d > 50 ? colors[4] : d > 20 ? colors[3] : d > 10 ? colors[2] : colors[1];
     }
 };
 
 // Helper for Legend Ranges
 const getLegendData = (attr) => {
-    switch (attr) {
-        case 'nitrogen': return [
-            { color: '#d73027', label: 'Very Low (< 75 kg/ha)' },
-            { color: '#fc8d59', label: 'Low (75 - 150 kg/ha)' },
-            { color: '#fee08b', label: 'Medium (150 - 225 kg/ha)' },
-            { color: '#1a9850', label: 'High (> 225 kg/ha)' }
+    const attribute = attr === 'oc' ? 'organic_carbon' : attr;
+    const colors = {
+        8: '#800026', 7: '#BD0026', 6: '#E31A1C', 5: '#FC4E2A',
+        4: '#FD8D3C', 3: '#FEB24C', 2: '#FED976', 1: '#FFEDA0'
+    };
+
+    const thresholds = {
+        nitrogen: [350, 300, 250, 225, 200, 150, 100],
+        phosphorus: [60, 50, 40, 30, 22, 18, 14],
+        potassium: [450, 400, 350, 325, 300, 250, 200],
+        ph: [8.5, 8.0, 7.5, 7.0, 6.5, 6.0, 5.5],
+        organic_carbon: [1.6, 1.4, 1.2, 1.0, 0.8, 0.6, 0.4],
+        moisture: [35, 30, 25, 20, 15, 10, 5],
+        temperature: [35, 32, 29, 26, 23, 20, 17],
+    };
+
+    if (attribute === 'shs_germination') {
+        return [
+            { color: '#1a9850', label: "Good (>= 70%)" },
+            { color: '#f4b400', label: "Fair (40% - 70%)" },
+            { color: '#d73027', label: "Poor (< 40%)" }
         ];
-        case 'phosphorus': return [
-            { color: '#d73027', label: 'Very Low (< 35 kg/ha)' },
-            { color: '#fc8d59', label: 'Low (35 - 75 kg/ha)' },
-            { color: '#fee08b', label: 'Medium (75 - 110 kg/ha)' },
-            { color: '#1a9850', label: 'High (> 110 kg/ha)' }
-        ];
-        case 'potassium': return [
-            { color: '#d73027', label: 'Very Low (< 100 kg/ha)' },
-            { color: '#fc8d59', label: 'Low (100 - 200 kg/ha)' },
-            { color: '#fee08b', label: 'Medium (200 - 300 kg/ha)' },
-            { color: '#1a9850', label: 'High (> 300 kg/ha)' }
-        ];
-        case 'ph': return [
-            { color: '#d73027', label: 'Strongly Acidic (< 5.5)' },
-            { color: '#fc8d59', label: 'Moderately Acidic (5.5 - 6.5)' },
-            { color: '#1a9850', label: 'Neutral (6.5 - 7.5)' },
-            { color: '#4575b4', label: 'Alkaline (> 7.5)' }
-        ];
-        case 'organic_carbon': return [
-            { color: '#d73027', label: 'Very Low (< 0.6%)' },
-            { color: '#fc8d59', label: 'Low (0.6 - 1.0%)' },
-            { color: '#fee08b', label: 'Medium (1.0 - 1.5%)' },
-            { color: '#1a9850', label: 'High (> 1.5%)' }
-        ];
-        case 'moisture': return [
-            { color: '#d73027', label: 'Very Low (< 13%)' },
-            { color: '#fc8d59', label: 'Low (13 - 22%)' },
-            { color: '#fee08b', label: 'Medium (22 - 31%)' },
-            { color: '#1a9850', label: 'High (> 31%)' }
-        ];
-        default: return [];
     }
+
+    const t = thresholds[attribute] || [1000, 500, 200, 100, 50, 20, 10];
+
+    return [
+        { color: colors[8], label: `> ${t[0]}` },
+        { color: colors[7], label: `${t[1]} - ${t[0]}` },
+        { color: colors[6], label: `${t[2]} - ${t[1]}` },
+        { color: colors[5], label: `${t[3]} - ${t[2]}` },
+        { color: colors[4], label: `${t[4]} - ${t[3]}` },
+        { color: colors[3], label: `${t[5]} - ${t[4]}` },
+        { color: colors[2], label: `${t[6]} - ${t[5]}` },
+        { color: colors[1], label: `< ${t[6]}` }
+    ];
 };
 
 // Component to handle Vector Boundaries
-const VectorBoundaryLayer = ({ state, district, selectedAttribute }) => {
+const VectorBoundaryLayer = ({ state, district, selectedAttribute, matchedSubdistricts }) => {
     const map = useMap();
     const [geoJsonData, setGeoJsonData] = useState(null);
     const layerRef = useRef(null);
@@ -121,7 +116,8 @@ const VectorBoundaryLayer = ({ state, district, selectedAttribute }) => {
             'potassium': 'K',
             'ph': 'ph',
             'organic_carbon': 'oc',
-            'moisture': 'moisture'
+            'moisture': 'moisture',
+            'temperature': 'temperature'
         };
         return map[attr] || attr;
     };
@@ -165,14 +161,37 @@ const VectorBoundaryLayer = ({ state, district, selectedAttribute }) => {
         const backendKey = getBackendKey(selectedAttribute);
         console.log(`Choropleth Mode: ${selectedAttribute} -> ${backendKey}`);
 
+        // Check if query filter is active
+        const isFilterActive = matchedSubdistricts && matchedSubdistricts.length > 0;
+
         const style = (feature) => {
             const val = feature.properties[backendKey];
-            //console.log(`Feature: ${feature.properties.TEHSIL || feature.properties.DISTRICT}, Val: ${val}`);
+
+            // Robust name detection for highlighting (State/District/Subdistrict)
+            const featureName = (feature.properties.District || feature.properties.DISTRICT || feature.properties.DIST_NAME || feature.properties.dtname ||
+                feature.properties.TEHSIL || feature.properties.SUB_DIST || feature.properties.sdtname ||
+                feature.properties.STATE || feature.properties.ST_NM || feature.properties.stname || "Region").trim().toUpperCase();
+
+            // If filter is active, grey out non-matching regions
+            if (isFilterActive) {
+                const isMatch = matchedSubdistricts.some(name =>
+                    name.toUpperCase() === featureName
+                );
+                if (!isMatch) {
+                    return {
+                        fillColor: '#d0d0d0',
+                        fillOpacity: 0.2,
+                        color: '#666',
+                        weight: 0.5,
+                        opacity: 0.5
+                    };
+                }
+            }
 
             return {
-                fillColor: val !== undefined ? getColor(selectedAttribute, val) : '#ffffff',
-                fillOpacity: val !== undefined ? 0.7 : 0.1, // Solid if data exists, transparent if not
-                color: '#666', // Darker grey borders
+                fillColor: val !== undefined ? getColor(selectedAttribute, val) : '#f3f4f6',
+                fillOpacity: val !== undefined ? 0.75 : 0.05,
+                color: '#666',
                 weight: 1,
                 opacity: 1
             };
@@ -213,7 +232,7 @@ const VectorBoundaryLayer = ({ state, district, selectedAttribute }) => {
         return () => {
             if (layerRef.current) map.removeLayer(layerRef.current);
         };
-    }, [geoJsonData, map, selectedAttribute]); // Re-render when selectedAttribute changes
+    }, [geoJsonData, map, selectedAttribute, matchedSubdistricts]); // Re-render when selectedAttribute or filter changes
 
     return null;
 };
@@ -240,6 +259,10 @@ const AnalysisPage = () => {
     const [farmData, setFarmData] = useState([]);
     const [selectedAttribute, setSelectedAttribute] = useState('nitrogen');
     const [loading, setLoading] = useState(false);
+
+    // Query Builder State
+    const [queryBuilderOpen, setQueryBuilderOpen] = useState(false);
+    const [matchedSubdistricts, setMatchedSubdistricts] = useState(null);
 
     // Fetch Locations (Dropdown Options)
     useEffect(() => {
@@ -341,21 +364,38 @@ const AnalysisPage = () => {
                     <MapContainer
                         center={INDIA_CENTER}
                         zoom={DEFAULT_ZOOM}
-                        style={{ height: '100%', width: '100%', background: '#fff' }} // White Background for Vector Map
+                        style={{ height: '100%', width: '100%', background: '#fff' }}
                         zoomControl={false}
                     >
-
 
                         {/* Vector Background Layer - Choropleth Mode */}
                         <VectorBoundaryLayer
                             state={filters.state}
                             district={filters.district}
-                            selectedAttribute={selectedAttribute} // Pass selected attribute
+                            selectedAttribute={selectedAttribute}
+                            matchedSubdistricts={matchedSubdistricts}
                         />
 
-                        {/* Farm Data Points REMOVED as per request for Choropleth view */}
-                        {/* {farmData.map((farm, idx) => ( ... ))} */}
                     </MapContainer>
+
+                    {/* Query Builder Toggle Button */}
+                    {!matchedSubdistricts ? (
+                        <button
+                            className="qb-toggle-btn"
+                            onClick={() => setQueryBuilderOpen(true)}
+                        >
+                            🔍 Query Builder
+                        </button>
+                    ) : (
+                        <div className="qb-active-badge">
+                            🔍 Filter Active ({matchedSubdistricts.length} regions)
+                            <button className="qb-clear-x" onClick={() => setMatchedSubdistricts(null)}>✕</button>
+                            <button
+                                style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}
+                                onClick={() => setQueryBuilderOpen(true)}
+                            >Edit</button>
+                        </div>
+                    )}
 
                     {/* Loading Overlay */}
                     {loading && (
@@ -411,6 +451,14 @@ const AnalysisPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Query Builder Dialog */}
+            <QueryBuilder
+                isOpen={queryBuilderOpen}
+                onClose={() => setQueryBuilderOpen(false)}
+                onApplyFilter={(subdistricts) => setMatchedSubdistricts(subdistricts)}
+                onClearFilter={() => setMatchedSubdistricts(null)}
+            />
         </div>
     );
 };

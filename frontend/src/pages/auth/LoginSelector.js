@@ -4,21 +4,11 @@ import { Link } from 'react-router-dom';
 const LoginSelector = () => {
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
-            {/* Platform Title */}
-            <header className="py-6 text-center bg-white shadow-sm">
-                <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
-                    BhoomiSanket | <span className="text-green-700">भूमि संकेत</span>
-                </h1>
-                <p className="text-sm text-gray-500 mt-1 uppercase tracking-wide">
-                    SNSI – Soil Nutrient Suitability Index
-                </p>
-            </header>
-
             {/* Main Content */}
             <main className="flex-grow flex items-center justify-center p-4">
                 <div className="w-full max-w-4xl">
                     <div className="text-center mb-10">
-                        <h2 className="text-2xl font-bold text-gray-800">Login to BhoomiSanket | भूमि संकेत</h2>
+                        <h2 className="text-2xl font-bold text-gray-800">Login</h2>
                         <p className="text-gray-600 mt-2">Select your role to continue</p>
                     </div>
 

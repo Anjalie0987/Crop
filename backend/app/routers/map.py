@@ -115,57 +115,53 @@ def get_geojson(shp_path, filter_candidates=None, filter_val=None):
 # Helper: Inject Data into GeoJSON
 def inject_soil_data(response_obj):
     try:
-        data = json.loads(response_obj.body)
+        from app.database import SessionLocal
+        from app.routers.germination import get_germination_state_stats, get_germination_district_stats
         
-        # Helper for deterministic random values
-        import hashlib
-        def get_val(seed, offset, min_v, max_v):
-            if not seed: seed = "unknown"
-            hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
-            sub_hash = (hash_val + offset) % 1000
-            return min_v + (sub_hash / 1000.0) * (max_v - min_v)
+        db = SessionLocal()
+        state_stats = {}
+        district_stats = {}
+        try:
+            # Get real stats from DB
+            state_stats = get_germination_state_stats(db)
+            district_stats = get_germination_district_stats(db)
+        except Exception as e:
+            print(f"Error fetching stats: {e}")
+        finally:
+            db.close()
 
-        # --- DB DATA FETCH (Conceptual - simplified for now) ---
-        # In a real app, we would aggregate by State/District here.
-        # For now, we use the deterministic mock logic for visual consistency across levels.
+        data = json.loads(response_obj.body)
         
         if 'features' in data:
             for feature in data['features']:
                 props = feature['properties']
-                # Try to find a name for the seed / matching
-                # Supports State, District, Subdistrict keys
-                name_raw = (props.get('TEHSIL') or props.get('SUB_DIST') or 
-                           props.get('DISTRICT') or props.get('DIST_NAME') or 
-                           props.get('STATE') or props.get('ST_NM') or 
-                           str(props.get('id', 'unknown')))
-                           
-                # USE MOCK DATA (Fallback/Demo)
-                # Normalized values (0.0 - 1.0) for Choropleth coloring
-                # In real production, this would be: `db.query(func.avg(col)).group_by(region)`
+                # Try to find a name for the matching
+                dist_name = (props.get('District') or props.get('DISTRICT') or props.get('DIST_NAME') or props.get('dtname') or "").strip().upper()
+                state_name = (props.get('STATE') or props.get('ST_NM') or props.get('stname') or "").strip().upper()
                 
-                # 1. Macro Nutrients
-                props["N"] = get_val(name_raw, 1, 0.2, 0.9)
-                props["P"] = get_val(name_raw, 2, 0.1, 0.8)
-                props["K"] = get_val(name_raw, 3, 0.3, 0.95)
+                # Fetch stats (Priority: District, then State)
+                stats = district_stats.get(dist_name) or state_stats.get(state_name)
                 
-                # 2. pH & Organic Carbon
-                props["ph"] = get_val(name_raw, 4, 0.4, 0.8) 
-                props["oc"] = get_val(name_raw, 5, 0.1, 0.9) 
-                
-                # 3. Micro Nutrients
-                props["Zn"] = get_val(name_raw, 6, 0.2, 0.8)
-                props["S"]  = get_val(name_raw, 7, 0.3, 0.9)
-                props["B"]  = get_val(name_raw, 8, 0.1, 0.7)
-                props["Fe"] = get_val(name_raw, 9, 0.2, 0.9)
-                props["Mn"] = get_val(name_raw, 10, 0.2, 0.8)
-                props["Cu"] = get_val(name_raw, 11, 0.1, 0.8)
-                
-                # 4. Physical / Climate
-                props["moisture"] = get_val(name_raw, 12, 0.2, 0.9)
-                props["rainfall"] = get_val(name_raw, 14, 0.2, 0.9)
-                props["humidity"] = get_val(name_raw, 15, 30, 80)
-                props["temperature"] = get_val(name_raw, 16, 20, 40)
+                if stats:
+                    props.update(stats)
+                    props['has_real_data'] = True
+                    
+                    # Map 'organic_carbon' to 'oc' for consistency if needed by any existing code
+                    # although frontend uses 'organic_carbon' now
+                    if 'organic_carbon' in stats:
+                        props['oc'] = stats['organic_carbon']
 
+                    # Add category label
+                    avg_germ = stats.get("shs_germination", 0)
+                    if avg_germ >= 70: props["germination_category"] = "Good"
+                    elif avg_germ >= 40: props["germination_category"] = "Fair"
+                    else: props["germination_category"] = "Poor"
+
+                    # Consistent naming for frontend (Legacy support)
+                    props["N"] = stats.get("nitrogen", 0)
+                    props["P"] = stats.get("phosphorus", 0)
+                    props["K"] = stats.get("potassium", 0)
+                    
         # Return new response
         return Response(content=json.dumps(data), media_type="application/json")
         
@@ -174,14 +170,22 @@ def inject_soil_data(response_obj):
         return response_obj
 
 @router.get("/state")
-async def get_states():
-    resp = get_geojson(STATE_SHP)
+async def get_states(filter: str = Query(None)):
+    resp = None
+    if filter:
+        candidates = ["STATE", "ST_NM", "State_Name", "StateName", "stname"]
+        resp = get_geojson(STATE_SHP, filter_candidates=candidates, filter_val=filter)
+    else:
+        resp = get_geojson(STATE_SHP)
     return inject_soil_data(resp)
 
 @router.get("/district")
-async def get_districts(state: str = Query(None)):
+async def get_districts(state: str = Query(None), filter: str = Query(None)):
     resp = None
-    if state:
+    if filter:
+        candidates = ["DISTRICT", "DIST_NAME", "District_Name", "DistName", "dtname"]
+        resp = get_geojson(DISTRICT_SHP, filter_candidates=candidates, filter_val=filter)
+    elif state:
         candidates = ["STATE", "ST_NM", "State_Name", "StateName", "stname"]
         resp = get_geojson(DISTRICT_SHP, filter_candidates=candidates, filter_val=state)
     else:
@@ -194,6 +198,9 @@ async def get_subdistricts(state: str = Query(None), district: str = Query(None)
     if district:
         candidates = ["DISTRICT", "DIST_NAME", "District_Name", "DistName", "dtname"]
         resp = get_geojson(SUBDISTRICT_SHP, filter_candidates=candidates, filter_val=district)
+    elif state:
+        candidates = ["STATE", "ST_NM", "ST_NAME", "StateName"]
+        resp = get_geojson(SUBDISTRICT_SHP, filter_candidates=candidates, filter_val=state)
     else:
         resp = get_geojson(SUBDISTRICT_SHP)
     return inject_soil_data(resp)
