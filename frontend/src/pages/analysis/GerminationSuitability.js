@@ -38,8 +38,8 @@ const getExperimentalColor = (attr, d) => {
             return d > 350 ? colors[8] : d > 300 ? colors[7] : d > 250 ? colors[6] : d > 225 ? colors[5] :
                 d > 200 ? colors[4] : d > 150 ? colors[3] : d > 100 ? colors[2] : colors[1];
         case 'phosphorus':
-            return d > 60 ? colors[8] : d > 50 ? colors[7] : d > 40 ? colors[6] : d > 30 ? colors[5] :
-                d > 22 ? colors[4] : d > 18 ? colors[3] : d > 14 ? colors[2] : colors[1];
+            return d > 30 ? colors[8] : d > 25 ? colors[7] : d > 20 ? colors[6] : d > 18 ? colors[5] :
+                d > 16 ? colors[4] : d > 14 ? colors[3] : d > 12 ? colors[2] : colors[1];
         case 'potassium':
             return d > 450 ? colors[8] : d > 400 ? colors[7] : d > 350 ? colors[6] : d > 325 ? colors[5] :
                 d > 300 ? colors[4] : d > 250 ? colors[3] : d > 200 ? colors[2] : colors[1];
@@ -47,14 +47,14 @@ const getExperimentalColor = (attr, d) => {
             return d > 8.5 ? colors[8] : d > 8.0 ? colors[7] : d > 7.5 ? colors[6] : d > 7.0 ? colors[5] :
                 d > 6.5 ? colors[4] : d > 6.0 ? colors[3] : d > 5.5 ? colors[2] : colors[1];
         case 'organic_carbon':
-            return d > 1.6 ? colors[8] : d > 1.4 ? colors[7] : d > 1.2 ? colors[6] : d > 1.0 ? colors[5] :
-                d > 0.8 ? colors[4] : d > 0.6 ? colors[3] : d > 0.4 ? colors[2] : colors[1];
+            return d > 0.8 ? colors[8] : d > 0.7 ? colors[7] : d > 0.6 ? colors[6] : d > 0.5 ? colors[5] :
+                d > 0.4 ? colors[4] : d > 0.3 ? colors[3] : d > 0.2 ? colors[2] : colors[1];
         case 'moisture':
-            return d > 35 ? colors[8] : d > 30 ? colors[7] : d > 25 ? colors[6] : d > 20 ? colors[5] :
-                d > 15 ? colors[4] : d > 10 ? colors[3] : d > 5 ? colors[2] : colors[1];
+            return d > 30 ? colors[8] : d > 27 ? colors[7] : d > 25 ? colors[6] : d > 23 ? colors[5] :
+                d > 20 ? colors[4] : d > 18 ? colors[3] : d > 15 ? colors[2] : colors[1];
         case 'temperature':
-            return d > 35 ? colors[8] : d > 32 ? colors[7] : d > 29 ? colors[6] : d > 26 ? colors[5] :
-                d > 23 ? colors[4] : d > 20 ? colors[3] : d > 17 ? colors[2] : colors[1];
+            return d > 24 ? colors[8] : d > 23 ? colors[7] : d > 22 ? colors[6] : d > 21 ? colors[5] :
+                d > 20 ? colors[4] : d > 19 ? colors[3] : d > 18 ? colors[2] : colors[1];
         case 'shs_germination':
             return d >= 70 ? '#1a9850' : d >= 40 ? '#f4b400' : '#d73027';
         default:
@@ -75,12 +75,12 @@ const getLegendData = (attr) => {
 
     const thresholds = {
         nitrogen: [350, 300, 250, 225, 200, 150, 100],
-        phosphorus: [60, 50, 40, 30, 22, 18, 14],
+        phosphorus: [30, 25, 20, 18, 16, 14, 12],
         potassium: [450, 400, 350, 325, 300, 250, 200],
         ph: [8.5, 8.0, 7.5, 7.0, 6.5, 6.0, 5.5],
-        organic_carbon: [1.6, 1.4, 1.2, 1.0, 0.8, 0.6, 0.4],
-        moisture: [35, 30, 25, 20, 15, 10, 5],
-        temperature: [35, 32, 29, 26, 23, 20, 17],
+        organic_carbon: [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2],
+        moisture: [30, 27, 25, 23, 20, 18, 15],
+        temperature: [24, 23, 22, 21, 20, 19, 18],
         shs_germination: [90, 85, 80, 75, 70, 60, 50]
     };
 
@@ -153,8 +153,16 @@ const VectorBoundaryLayer = ({ type, visible, weight = 1.5, color = '#9e9e9e', m
         }
 
         if (val !== undefined && (type === 'district' || type === 'state')) {
+            let fillColor = getExperimentalColor(selectedAttribute, val);
+
+            // OPTIMIZATION: If we are viewing germination and have a categorical label, use it!
+            if (selectedAttribute === 'shs_germination' && props.germination_category) {
+                fillColor = props.germination_category === 'Good' ? '#1a9850' :
+                    props.germination_category === 'Fair' ? '#f4b400' : '#d73027';
+            }
+
             return {
-                fillColor: isState ? 'transparent' : getExperimentalColor(selectedAttribute, val),
+                fillColor: isState ? 'transparent' : fillColor,
                 fillOpacity: isState ? 0.05 : 0.75, // Tiny opacity for state layer makes it interactive
                 color: isState ? '#444' : '#666',
                 weight: isState ? 2 : 0.8,

@@ -151,11 +151,14 @@ def inject_soil_data(response_obj):
                     if 'organic_carbon' in stats:
                         props['oc'] = stats['organic_carbon']
 
-                    # Add category label
-                    avg_germ = stats.get("shs_germination", 0)
-                    if avg_germ >= 70: props["germination_category"] = "Good"
-                    elif avg_germ >= 40: props["germination_category"] = "Fair"
-                    else: props["germination_category"] = "Poor"
+                    # Add category label (Priority: Passed from stats, then recalculated)
+                    props["germination_category"] = stats.get("category_germination")
+                    
+                    if not props["germination_category"]:
+                        avg_germ = stats.get("shs_germination", 0)
+                        if avg_germ >= 70: props["germination_category"] = "Good"
+                        elif avg_germ >= 40: props["germination_category"] = "Fair"
+                        else: props["germination_category"] = "Poor"
 
                     # Consistent naming for frontend (Legacy support)
                     props["N"] = stats.get("nitrogen", 0)
