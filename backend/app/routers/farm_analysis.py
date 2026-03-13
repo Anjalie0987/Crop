@@ -73,7 +73,7 @@ def get_locations(db: Session = Depends(get_db)):
             state = row.state
             states.add(state)
             # If Maharashtra, provide known districts from shapefile for the dropdowns
-            if state == "MAHARASHTRA" and MAH_DISTRICTS_GDF is not None:
+            if state.upper() == "MAHARASHTRA" and MAH_DISTRICTS_GDF is not None:
                 districts[state] = sorted(MAH_DISTRICTS_GDF['District'].unique().tolist())
             else:
                 districts[state] = []

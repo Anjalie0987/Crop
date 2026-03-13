@@ -8,6 +8,14 @@ const Home = () => {
             {/* Reusable Header Header */}
             <Header />
 
+            {/* Disclaimer Banner */}
+            <div className="bg-amber-100 border-b-2 border-amber-400 py-3 px-6 flex items-center justify-center gap-3 text-amber-900">
+                <span className="text-xl flex-shrink-0">⚠️Disclaimer:</span>
+                <p className="text-base font-semibold text-center">
+                    Maps on this platform use historical datasets for research and demonstration purposes only. The data may not accurately reflect the current state and district boundaries.
+                </p>
+            </div>
+
             {/* Hero Section */}
             <main className="relative flex-grow min-h-screen flex items-center">
                 {/* Background Image */}

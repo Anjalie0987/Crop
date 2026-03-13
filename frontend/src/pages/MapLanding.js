@@ -33,7 +33,57 @@ const VectorBoundaryLayer = ({ type, visible, weight = 1.5, color = '#666' }) =>
         opacity: 1
     });
 
-    return <GeoJSON data={geoJsonData} style={style} />;
+    const onEachFeature = (feature, layer) => {
+        const props = feature.properties;
+        const name = (props.District || props.DISTRICT || props.DIST_NAME || props.dtname ||
+            props.TEHSIL || props.SUB_DIST || props.sdtname ||
+            props.STATE || props.ST_NM || props.stname || "Region").trim();
+
+        layer.on({
+            mouseover: (e) => {
+                const targetLayer = e.target;
+                targetLayer.setStyle({
+                    weight: weight + 1,
+                    color: '#222',
+                    fillOpacity: 0.1
+                });
+            },
+            mouseout: (e) => {
+                const targetLayer = e.target;
+                targetLayer.setStyle(style());
+            },
+            mousemove: (e) => {
+                const { lat, lng } = e.latlng;
+                const html = `
+                    <div class="p-2">
+                        <div class="text-[10px] font-bold text-gray-400 uppercase">${type}</div>
+                        <div class="text-sm font-bold text-gray-800">${name}</div>
+                        <div class="text-[10px] text-gray-500 mt-1">
+                            Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}
+                        </div>
+                    </div>
+                `;
+                layer.setTooltipContent(html);
+            }
+        });
+
+        layer.bindTooltip("", { sticky: true, className: 'custom-map-tooltip' });
+    };
+
+    return (
+        <>
+            <style>{`
+                .custom-map-tooltip {
+                    background: white !important;
+                    border: none !important;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+                    border-radius: 8px !important;
+                    padding: 0 !important;
+                }
+            `}</style>
+            <GeoJSON data={geoJsonData} style={style} onEachFeature={onEachFeature} />
+        </>
+    );
 };
 
 // Component to capture map instance

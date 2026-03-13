@@ -63,6 +63,19 @@ const GeoJsonController = ({ data, onRegionSelect }) => {
                         geoJsonLayerRef.current.resetStyle(l);
                     }
                 },
+                mousemove: (e) => {
+                    const { lat, lng } = e.latlng;
+                    const tooltipHtml = `
+                        <div class="p-2 min-w-[100px]">
+                            <div class="text-[10px] font-bold text-gray-400 uppercase">${regionType}</div>
+                            <div class="text-sm font-bold text-gray-800">${regionName}</div>
+                            <div class="text-[10px] text-gray-500 mt-1 border-t pt-1">
+                                Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}
+                            </div>
+                        </div>
+                    `;
+                    layer.setTooltipContent(tooltipHtml);
+                },
                 click: (e) => {
                     L.DomEvent.stopPropagation(e);
                     if (onRegionSelect && regionName) {
@@ -71,14 +84,7 @@ const GeoJsonController = ({ data, onRegionSelect }) => {
                 }
             });
 
-            // Tooltip implementation
-            const tooltipHtml = `
-                <div class="p-2 min-w-[100px]">
-                    <div class="text-[10px] font-bold text-gray-400 uppercase">${regionType}</div>
-                    <div class="text-sm font-bold text-gray-800">${regionName}</div>
-                </div>
-            `;
-            layer.bindTooltip(tooltipHtml, {
+            layer.bindTooltip("", {
                 sticky: true,
                 className: 'custom-map-tooltip',
                 direction: 'top',

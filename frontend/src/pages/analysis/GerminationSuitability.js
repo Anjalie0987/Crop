@@ -22,6 +22,20 @@ const ATTRIBUTES = [
     { key: "temperature", label: "Temperature", unit: "°C" },
 ];
 
+// Add event listener to close suggestions when clicking outside
+const SearchCloser = ({ onClickOutside }) => {
+    useEffect(() => {
+        const handleClick = (e) => {
+            if (!e.target.closest('.relative')) {
+                onClickOutside();
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [onClickOutside]);
+    return null;
+};
+
 // Experimental Color Logic: Fixed thresholds style (like Leaflet tutorial)
 const getExperimentalColor = (attr, d) => {
     if (d === null || d === undefined) return '#f3f4f6';
@@ -190,40 +204,53 @@ const VectorBoundaryLayer = ({ type, visible, weight = 1.5, color = '#9e9e9e', m
         layer.on({
             mouseover: (e) => {
                 const targetLayer = e.target;
+                const isFilterActive = matchedSubdistricts && matchedSubdistricts.length > 0;
+                const isMatch = !isFilterActive || matchedSubdistricts.some(n => n.toUpperCase() === name.toUpperCase());
+
                 targetLayer.setStyle({
                     weight: type === 'state' ? 3 : 2,
                     color: '#222',
-                    fillOpacity: type === 'state' ? 0.15 : 0.9,
+                    fillOpacity: isMatch ? (type === 'state' ? 0.15 : 0.9) : 0.3,
                     dashArray: ''
                 });
             },
             mouseout: (e) => {
                 const targetLayer = e.target;
                 targetLayer.setStyle(style(feature));
+            },
+            mousemove: (e) => {
+                const { lat, lng } = e.latlng;
+                const attr = ATTRIBUTES.find(a => a.key === selectedAttribute);
+
+                let html = `<div class="p-2">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase">${type}</div>
+                    <div class="text-sm font-bold text-gray-800">${name}</div>`;
+
+                if (val !== undefined) {
+                    html += `<div class="mt-1 flex items-center gap-2">
+                        <span class="text-xs text-gray-600">${attr?.label || selectedAttribute}:</span>
+                        <span class="text-sm font-bold text-green-700">${val.toFixed(2)}${attr?.unit || ''}</span>
+                    </div>`;
+                }
+
+                html += `<div class="text-[9px] text-gray-400 mt-1 border-t pt-1">
+                    Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}
+                </div>`;
+
+                html += `</div>`;
+                layer.setTooltipContent(html);
             }
         });
 
-        const attr = ATTRIBUTES.find(a => a.key === selectedAttribute);
-        const catColor = category === 'Good' ? '#1a9850' : category === 'Fair' ? '#f4b400' : '#d73027';
-
-        let html = `<div class="p-2">
-            <div class="text-[10px] font-bold text-gray-400 uppercase">${type}</div>
-            <div class="text-sm font-bold text-gray-800">${name}</div>`;
-
-        if (val !== undefined) {
-            html += `<div class="mt-1 flex items-center gap-2">
-                <span class="text-xs text-gray-600">${attr?.label || selectedAttribute}:</span>
-                <span class="text-sm font-bold text-green-700">${val.toFixed(2)}${attr?.unit || ''}</span>
-            </div>`;
-        }
-
-        // removed status
-        html += `</div>`;
-
-        layer.bindTooltip(html, { sticky: true, className: 'custom-map-tooltip' });
+        layer.bindTooltip("", { sticky: true, className: 'custom-map-tooltip' });
     };
 
-    return <GeoJSON key={`${type}-${selectedAttribute}`} data={geoJsonData} style={style} onEachFeature={onEachFeature} />;
+    return <GeoJSON 
+        key={`${type}-${selectedAttribute}-${matchedSubdistricts?.length || 0}`} 
+        data={geoJsonData} 
+        style={style} 
+        onEachFeature={onEachFeature} 
+    />;
 };
 
 
@@ -799,19 +826,5 @@ const GerminationSuitability = () => {
     );
 };
 
-
-// Add event listener to close suggestions when clicking outside
-const SearchCloser = ({ onClickOutside }) => {
-    useEffect(() => {
-        const handleClick = (e) => {
-            if (!e.target.closest('.relative')) {
-                onClickOutside();
-            }
-        };
-        document.addEventListener('mousedown', handleClick);
-        return () => document.removeEventListener('mousedown', handleClick);
-    }, [onClickOutside]);
-    return null;
-};
 
 export default GerminationSuitability;
