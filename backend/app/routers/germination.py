@@ -103,11 +103,14 @@ def get_germination_district_stats(db: Session = Depends(get_db)):
     # 2. Group by district using spatial join
     district_data = {} # name -> {nitrogen: [], ...}
     
-    # Maharashtra scattering center (broad)
-    mah_center = {"lat": 19.0, "lon": 76.0, "lat_range": 4.0, "lon_range": 6.0}
+    # State-specific scattering centers
+    CENTERS = {
+        "MAHARASHTRA": {"lat": 18.8, "lon": 76.7, "lat_range": 6.5, "lon_range": 8.5},
+        "GUJARAT": {"lat": 22.4, "lon": 71.3, "lat_range": 4.6, "lon_range": 6.4}
+    }
+    DEFAULT_CENTER = {"lat": 20.0, "lon": 78.0, "lat_range": 10.0, "lon_range": 10.0}
 
     # Clustering logic: Map categories to specific coordinate offsets
-    # This ensures "Poor" and "Fair" points aren't perfectly averaged out
     category_offsets = {
         "Good": (0.2, 0.2),    # North-East
         "Fair": (-0.3, 0.4),   # South-East
@@ -116,45 +119,30 @@ def get_germination_district_stats(db: Session = Depends(get_db)):
     }
 
     for i, row in enumerate(all_data):
+        # Identify center for current state
+        s_name = (row.state or "MAHARASHTRA").upper()
+        center = CENTERS.get(s_name, DEFAULT_CENTER)
+
         # Apply category-biased synthetic scattering
         seed = str(row.pixel_id or i)
         hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
         
         # Base random offset
-        base_lat_off = ((hash_val % 1000) / 1000.0 - 0.5) * mah_center["lat_range"]
-        base_lon_off = (((hash_val // 1000) % 1000) / 1000.0 - 0.5) * mah_center["lon_range"]
+        base_lat_off = ((hash_val % 1000) / 1000.0 - 0.5) * center["lat_range"]
+        base_lon_off = (((hash_val // 1000) % 1000) / 1000.0 - 0.5) * center["lon_range"]
         
-        # 1. Categorical bias (Major clustering)
+        # 1. Categorical bias
         bias_lat, bias_lon = category_offsets.get(row.category_germination, (0, 0))
         
-        # 2. Numerical bias for Organic Carbon
-        oc_val = row.organic_carbon or 0.5
-        oc_bias_lat = -0.1 if oc_val > 0.6 else 0.1 if oc_val < 0.4 else 0
-        oc_bias_lon = -0.1 if oc_val > 0.6 else 0.1 if oc_val < 0.4 else 0
-
-        # 3. Numerical bias for Phosphorus (Cluster high P towards South-East)
-        p_val = row.phosphorus or 20
-        p_bias_lat = -0.15 if p_val > 22 else 0.15 if p_val < 15 else 0
-        p_bias_lon = 0.15 if p_val > 22 else -0.15 if p_val < 15 else 0
-
-        # 4. Numerical bias for Moisture
-        m_val = row.moisture or 20
-        m_bias_lat = 0.15 if m_val > 25 else -0.15 if m_val < 15 else 0
-        m_bias_lon = -0.15 if m_val > 25 else 0.15 if m_val < 15 else 0
-
-        # 5. Numerical bias for Temperature (Cluster high Temp towards South)
-        t_val = row.temperature or 21
-        t_bias_lat = -0.2 if t_val > 22 else 0.2 if t_val < 19 else 0
-        t_bias_lon = 0
-
-        lat = mah_center["lat"] + (base_lat_off * 0.3) + (bias_lat * mah_center["lat_range"]) + (oc_bias_lat * mah_center["lat_range"]) + (p_bias_lat * mah_center["lat_range"]) + (m_bias_lat * mah_center["lat_range"]) + (t_bias_lat * mah_center["lat_range"])
-        lon = mah_center["lon"] + (base_lon_off * 0.3) + (bias_lon * mah_center["lon_range"]) + (oc_bias_lon * mah_center["lon_range"]) + (p_bias_lon * mah_center["lon_range"]) + (m_bias_lon * mah_center["lon_range"]) + (t_bias_lon * mah_center["lon_range"])
+        # 2. Numerical bias simplified
+        lat = center["lat"] + (base_lat_off * 1.2) + (bias_lat * center["lat_range"] * 0.05)
+        lon = center["lon"] + (base_lon_off * 1.2) + (bias_lon * center["lon_range"] * 0.05)
         
-        # Clip to ranges (simple)
-        lat = max(16.0, min(22.0, lat))
-        lon = max(73.0, min(80.0, lon))
+        # Clip to state bounds
+        lat = max(center["lat"] - center["lat_range"]/2, min(center["lat"] + center["lat_range"]/2, lat))
+        lon = max(center["lon"] - center["lon_range"]/2, min(center["lon"] + center["lon_range"]/2, lon))
 
-        d_name = get_district_from_coords(lat, lon)
+        d_name = get_district_from_coords(lat, lon, s_name)
         
         if d_name not in district_data:
             district_data[d_name] = {

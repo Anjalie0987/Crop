@@ -100,6 +100,8 @@ const MapLanding = () => {
     const [showStates, setShowStates] = useState(true);
     const [showDistricts, setShowDistricts] = useState(false);
     const [showSubdistricts, setShowSubdistricts] = useState(false);
+    const [showMaharashtra, setShowMaharashtra] = useState(false);
+    const [showMaharashtraState, setShowMaharashtraState] = useState(false);
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
@@ -132,6 +134,22 @@ const MapLanding = () => {
                         <VectorBoundaryLayer type="state" visible={showStates} weight={2} color="#444" />
                         <VectorBoundaryLayer type="district" visible={showDistricts} weight={1.2} color="#666" />
                         <VectorBoundaryLayer type="subdistrict" visible={showSubdistricts} weight={0.8} color="#999" />
+                        
+                        {/* Maharashtra Specific Overlay */}
+                        <VectorBoundaryLayer 
+                            type="maharashtra_districts" 
+                            visible={showMaharashtra} 
+                            weight={3} 
+                            color="#ef4444" // Red-500 for high visibility
+                        />
+
+                        {/* Maharashtra State Boundary Overlay */}
+                        <VectorBoundaryLayer 
+                            type="maharashtra_state" 
+                            visible={showMaharashtraState} 
+                            weight={4} 
+                            color="#3b82f6" // Blue-500 for state boundary
+                        />
                     </MapContainer>
 
                     {/* Floating Map Controls */}
@@ -166,6 +184,27 @@ const MapLanding = () => {
                                 />
                                 <span className="text-sm font-medium text-gray-700 group-hover:text-green-700 transition-colors">Sub-districts</span>
                             </label>
+
+                            <div className="pt-2 border-t border-gray-100">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={showMaharashtra}
+                                        onChange={(e) => setShowMaharashtra(e.target.checked)}
+                                        className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                    />
+                                    <span className="text-sm font-bold text-red-700 group-hover:text-red-800 transition-colors">Maharashtra Districts</span>
+                                </label>
+                                <label className="flex items-center gap-3 cursor-pointer group mt-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={showMaharashtraState}
+                                        onChange={(e) => setShowMaharashtraState(e.target.checked)}
+                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-bold text-blue-700 group-hover:text-blue-800 transition-colors">Maharashtra State</span>
+                                </label>
+                            </div>
                         </div>
 
                         {/* Navigation Controls */}

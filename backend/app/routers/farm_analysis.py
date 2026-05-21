@@ -11,27 +11,31 @@ from shapely.geometry import Point
 import numpy as np
 import os
 
-# Cache for Maharashtra districts geometry
-MAH_DISTRICTS_GDF = None
+# Cache for state districts geometry
+STATE_DISTRICTS_CACHE = {} # state_name.upper() -> GDF
 
-def load_maharashtra_districts():
-    global MAH_DISTRICTS_GDF
-    if MAH_DISTRICTS_GDF is not None:
-        return
+def load_districts(state_name: str):
+    global STATE_DISTRICTS_CACHE
+    state_key = state_name.upper()
+    if state_key in STATE_DISTRICTS_CACHE:
+        return STATE_DISTRICTS_CACHE[state_key]
     
     try:
         shp_path = r'c:\Users\anjal\OneDrive\Desktop\CROP\BhoomiSanket\backend\data\shapefiles\district\DISTRICT_BOUNDARY_WGS84.shp'
         gdf = gpd.read_file(shp_path)
-        # Filter for Maharashtra only
-        # Note: Columns are ['District', 'STATE', ...]
-        MAH_DISTRICTS_GDF = gdf[gdf['STATE'].str.contains('MAHARASHTRA', case=False, na=False)].copy()
-        print(f"Loaded {len(MAH_DISTRICTS_GDF)} districts for Maharashtra.")
+        # Filter for requested state
+        state_gdf = gdf[gdf['STATE'].str.contains(state_name, case=False, na=False)].copy()
+        if not state_gdf.empty:
+            STATE_DISTRICTS_CACHE[state_key] = state_gdf
+            print(f"Loaded {len(state_gdf)} districts for {state_name}.")
+            return state_gdf
     except Exception as e:
-        print(f"Error loading district shapefile: {e}")
-        MAH_DISTRICTS_GDF = None
+        print(f"Error loading district shapefile for {state_name}: {e}")
+    
+    return None
 
-# Initialize on module load
-load_maharashtra_districts()
+# Initial load for Maharashtra
+load_districts("MAHARASHTRA")
 
 router = APIRouter(
     prefix="/farm-analysis",
@@ -45,16 +49,17 @@ def get_db():
     finally:
         db.close()
 
-def get_district_from_coords(lat, lon):
-    if MAH_DISTRICTS_GDF is None:
-        return "MAHARASHTRA"
+def get_district_from_coords(lat, lon, state_name="MAHARASHTRA"):
+    gdf = load_districts(state_name)
+    if gdf is None:
+        return state_name.upper()
     
     p = Point(lon, lat)
     # Check which district contains this point
-    for _, row in MAH_DISTRICTS_GDF.iterrows():
+    for _, row in gdf.iterrows():
         if row.geometry.contains(p):
             return str(row['District']).upper()
-    return "MAHARASHTRA"
+    return state_name.upper()
 
 @router.get("/locations", response_model=LocationHierarchy)
 def get_locations(db: Session = Depends(get_db)):
@@ -73,8 +78,12 @@ def get_locations(db: Session = Depends(get_db)):
             state = row.state
             states.add(state)
             # If Maharashtra, provide known districts from shapefile for the dropdowns
-            if state.upper() == "MAHARASHTRA" and MAH_DISTRICTS_GDF is not None:
-                districts[state] = sorted(MAH_DISTRICTS_GDF['District'].unique().tolist())
+            if state.upper() == "MAHARASHTRA" or state.upper() == "GUJARAT":
+                gdf = load_districts(state)
+                if gdf is not None:
+                    districts[state] = sorted(gdf['District'].unique().tolist())
+                else:
+                    districts[state] = []
             else:
                 districts[state] = []
             
@@ -107,9 +116,15 @@ def get_farm_data(
         farm_data = []
         
         # Central coordinates and range for Maharashtra scattering
-        mah_center = {"lat": 19.0, "lon": 76.0, "lat_range": 4.0, "lon_range": 6.0}
+        # Updated Maharashtra scattering center (broadened to cover Gadchiroli and Sindhudurg)
+        # State-specific scattering centers
+        CENTERS = {
+            "MAHARASHTRA": {"lat": 18.8, "lon": 76.7, "lat_range": 6.5, "lon_range": 8.5},
+            "GUJARAT": {"lat": 22.4, "lon": 71.3, "lat_range": 4.6, "lon_range": 6.4}
+        }
+        DEFAULT_CENTER = {"lat": 20.0, "lon": 78.0, "lat_range": 10.0, "lon_range": 10.0}
 
-        # Clustering logic: Map categories to specific coordinate offsets (Keep consistent with germination.py)
+        # Clustering logic: Map categories to specific coordinate offsets
         category_offsets = {
             "Good": (0.2, 0.2), 
             "Fair": (-0.3, 0.4), 
@@ -118,46 +133,31 @@ def get_farm_data(
         }
 
         for i, row in enumerate(result):
+            # Identify center for current state
+            s_name = (row.state or "MAHARASHTRA").upper()
+            center = CENTERS.get(s_name, DEFAULT_CENTER)
+
             # Apply category-biased synthetic scattering
             seed = str(row.pixel_id or i)
             hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
             
             # Base random offset
-            base_lat_off = ((hash_val % 1000) / 1000.0 - 0.5) * mah_center["lat_range"]
-            base_lon_off = (((hash_val // 1000) % 1000) / 1000.0 - 0.5) * mah_center["lon_range"]
+            base_lat_off = ((hash_val % 1000) / 1000.0 - 0.5) * center["lat_range"]
+            base_lon_off = (((hash_val // 1000) % 1000) / 1000.0 - 0.5) * center["lon_range"]
             
             # 1. Categorical bias
             bias_lat, bias_lon = category_offsets.get(row.category_germination, (0, 0))
             
-            # 2. Numerical bias for Organic Carbon
-            oc_val = row.organic_carbon or 0.5
-            oc_bias_lat = -0.1 if oc_val > 0.6 else 0.1 if oc_val < 0.4 else 0
-            oc_bias_lon = -0.1 if oc_val > 0.6 else 0.1 if oc_val < 0.4 else 0
-
-            # 3. Numerical bias for Phosphorus
-            p_val = row.phosphorus or 20
-            p_bias_lat = -0.15 if p_val > 22 else 0.15 if p_val < 15 else 0
-            p_bias_lon = 0.15 if p_val > 22 else -0.15 if p_val < 15 else 0
-
-            # 4. Numerical bias for Moisture
-            m_val = row.moisture or 20
-            m_bias_lat = 0.15 if m_val > 25 else -0.15 if m_val < 15 else 0
-            m_bias_lon = -0.15 if m_val > 25 else 0.15 if m_val < 15 else 0
-
-            # 5. Numerical bias for Temperature
-            t_val = row.temperature or 21
-            t_bias_lat = -0.2 if t_val > 22 else 0.2 if t_val < 19 else 0
-            t_bias_lon = 0
-
-            lat = mah_center["lat"] + (base_lat_off * 0.3) + (bias_lat * mah_center["lat_range"]) + (oc_bias_lat * mah_center["lat_range"]) + (p_bias_lat * mah_center["lat_range"]) + (m_bias_lat * mah_center["lat_range"]) + (t_bias_lat * mah_center["lat_range"])
-            lon = mah_center["lon"] + (base_lon_off * 0.3) + (bias_lon * mah_center["lon_range"]) + (oc_bias_lon * mah_center["lon_range"]) + (p_bias_lon * mah_center["lon_range"]) + (m_bias_lon * mah_center["lon_range"]) + (t_bias_lon * mah_center["lon_range"])
+            # 2. Numerical bias (simplified for all attributes)
+            lat = center["lat"] + (base_lat_off * 1.2) + (bias_lat * center["lat_range"] * 0.05)
+            lon = center["lon"] + (base_lon_off * 1.2) + (bias_lon * center["lon_range"] * 0.05)
             
-            # Clip to ranges
-            lat = max(16.0, min(22.0, lat))
-            lon = max(73.0, min(80.0, lon))
+            # Clip to state bounds
+            lat = max(center["lat"] - center["lat_range"]/2, min(center["lat"] + center["lat_range"]/2, lat))
+            lon = max(center["lon"] - center["lon_range"]/2, min(center["lon"] + center["lon_range"]/2, lon))
 
             # Identify district via spatial join (Shapefile)
-            district_name = get_district_from_coords(lat, lon)
+            district_name = get_district_from_coords(lat, lon, s_name)
 
             farm_data.append({
                 "farmer_id": f"SOIL_{row.pixel_id}",
@@ -173,10 +173,12 @@ def get_farm_data(
                 "organic_carbon": row.organic_carbon,
                 "moisture": row.moisture,
                 "shs_germination": row.shs_germination,
-                "category_germination": row.category_germination, # Add category
+                "category_germination": row.category_germination,
                 "soil_type": "N/A",
                 "recommended_fertilizer": "N/A"
             })
+            
+        return farm_data
             
         return farm_data
         

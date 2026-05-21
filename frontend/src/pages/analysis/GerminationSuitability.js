@@ -122,7 +122,7 @@ const getLegendData = (attr) => {
 
 
 // Component to handle Vector Boundaries
-const VectorBoundaryLayer = ({ type, visible, weight = 1.5, color = '#9e9e9e', matchedSubdistricts, selectedAttribute }) => {
+const VectorBoundaryLayer = ({ type, visible, weight = 1.5, color = '#9e9e9e', matchedSubdistricts, selectedAttribute, selectedState }) => {
     const [geoJsonData, setGeoJsonData] = useState(null);
 
     useEffect(() => {
@@ -130,11 +130,23 @@ const VectorBoundaryLayer = ({ type, visible, weight = 1.5, color = '#9e9e9e', m
             setGeoJsonData(null);
             return;
         }
-        const url = `${MAP_API_URL}/${type}`;
-        fetch(url)
+
+        const controller = new AbortController();
+        const url = type === 'district' 
+            ? `${MAP_API_URL}/${type}${selectedState ? `?state=${encodeURIComponent(selectedState)}` : ''}` 
+            : `${MAP_API_URL}/${type}`;
+
+        fetch(url, { signal: controller.signal })
             .then(res => res.json())
-            .then(data => setGeoJsonData(data))
-            .catch(err => console.error(`Error fetching ${type} overlay:`, err));
+            .then(data => {
+                setGeoJsonData(data);
+            })
+            .catch(err => {
+                if (err.name === 'AbortError') return;
+                console.error(`Error fetching ${type} overlay:`, err);
+            });
+
+        return () => controller.abort();
     }, [type, visible]);
 
     if (!geoJsonData || !visible) return null;
@@ -571,6 +583,7 @@ const GerminationSuitability = () => {
                             matchedSubdistricts={matchedSubdistricts}
                             selectedAttribute={selectedAttribute}
                             attributeStats={attributeStats}
+                            selectedState={filters.state}
                         />
                     </MapContainer>
 
