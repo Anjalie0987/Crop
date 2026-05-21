@@ -1,0 +1,12 @@
+Testing ENV URL: postgresql://postgres:***@127.0.0.1:5432/bhoomisanket_db
+FAILED for ENV URL: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Testing post123: postgresql://postgres:***@127.0.0.1:5432/bhoomisanket_db
+FAILED for post123: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Testing Anjali@2026 (encoded): postgresql://postgres:***@127.0.0.1:5432/bhoomisanket_db
+FAILED for Anjali@2026 (encoded): connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Testing 1234: postgresql://postgres:***@127.0.0.1:5432/bhoomisanket_db
+FAILED for 1234: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "postgres"
+

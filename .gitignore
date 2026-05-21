@@ -3,9 +3,14 @@
 *.log
 .vscode/
 .idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
 
 # Node.js
 node_modules/
+jspm_packages/
 dist/
 build/
 .npm
@@ -41,6 +46,10 @@ target/
 *.ear
 *.tar.gz
 .mvn/wrapper/maven-wrapper.jar
+
+# Build outputs (General)
+bin/
+obj/
 
 # Project Specific
 backend/data/

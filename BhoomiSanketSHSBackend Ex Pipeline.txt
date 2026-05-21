@@ -1,0 +1,70 @@
+Full Step-by-Step Pipeline
+
+1) Start the MAIN backend (map + DB + API)
+
+cd C:\Users\sujan\Desktop\CROP2\BhoomiSanket\backend
+venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+2) Start the SHS backend (processes CSV + serves /api/districts)
+
+cd C:\Users\sujan\Desktop\CROP2\shs-backend
+venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+
+3) Start the map-service (Java / Spring Boot)
+
+cd C:\Users\sujan\Desktop\CROP2\BhoomiSanket\map-service
+mvn spring-boot:run
+
+4) Start the Frontend (React)
+
+cd C:\Users\sujan\Desktop\CROP2\BhoomiSanket\frontend
+npm start
+
+	If port 3000 is in use, run:
+		npx kill-port 3000
+		npm start
+
+
+2. Verify Services are Running
+
+Check ports: netstat -ano | findstr :8000 (and 8001, 3000).
+
+Frontend should open at http://localhost:3000.
+
+3. Upload SHS CSV (Key Step - This Populates the DB)
+
+Go to the frontend at http://localhost:3000.
+
+Navigate to the Germination Suitability page.
+
+Upload your Wheat SHS CSV file (the one with 8000 rows for Maharashtra).
+The frontend sends it to POST http://localhost:8001/api/process-csv.
+SHS backend processes it, stores results in DB, and returns success 
+(e.g., "Processed 8000 rows").
+
+4. Check SHS Data in DB
+
+After upload, verify the API: GET http://localhost:8001/api/districts
+It should return varied categories (not all "Good"). If all are "Good", 
+the CSV data might have high scores, which is normal for the model.
+
+5. View SHS Choropleth on Map
+
+In the frontend, enable "SHS Choropleth" in the Map View panel.
+The map auto-selects Maharashtra and shows district boundaries.
+Districts with SHS data should color: Green (Good), Yellow (Fair), 
+Red (Poor).
+Districts without data remain transparent.
+
+6. Expected Outcome
+
+Map zooms to Maharashtra.
+Varied colors per district (not all green).
+Tooltips show SHS scores and categories on hover.
+If it's still all green after re-uploading, the CSV data likely 
+has scores >75 (classifying as "Good"). To force variety, 
+you could modify the classify_score function in shs-backend/app/routers/shs.py 
+to lower thresholds (e.g., Good >=60, Fair >=40).
+
+
+
